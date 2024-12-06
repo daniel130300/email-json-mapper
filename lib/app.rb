@@ -19,13 +19,12 @@ post '/map' do
     # Initialize the Root model from parsed JSON
     root = Root.new(request_body)
 
-    puts "ROOT #{root}"
-
     # Create the JsonMapper instance and map the data
     mapper = JsonMapper.new(root)
     mapped_data = mapper.map
 
-    puts "MAPPED DATA #{mapped_data}"
+    # Log the mapped data to ensure it's correctly transformed
+    puts "Mapped Data: #{mapped_data}"
 
     # Return the mapped data as a JSON response
     content_type :json

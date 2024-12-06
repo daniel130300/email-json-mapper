@@ -1,11 +1,51 @@
-# ruby_project
+# Email JSON Extractor
 
-The coolest dang program that you ever did see.
+A Ruby service that processes AWS SES (Simple Email Service) notifications and extracts JSON content from emails. This service provides two main functionalities:
+1. AWS SES event mapping
+2. JSON content extraction from emails
 
-## Dependencies
+## 🚀 Features
 
-* [Ruby](https://www.ruby-lang.org/en/).  Written with version [2.7.0](https://www.ruby-lang.org/en/news/2019/12/25/ruby-2-7-0-released/) - *[docs](https://docs.ruby-lang.org/en/2.7.0/)*.
+### AWS SES Event Mapping (`/map`)
+- Processes AWS SES event notifications
+- Validates and transforms JSON structures
+- Handles email processing receipts and verdicts
+- Provides detailed error reporting
 
-## Usage
+### Email JSON Extraction (`/parse-email`)
+- Extracts JSON content from emails using multiple strategies:
+  1. Email attachments
+  2. URLs within email body
+  3. Nested JSON URLs in HTML content
+  4. Direct email body parsing
+- Supports both remote URLs and local email files
+- UTF-8 encoding support for international characters
 
-Install deps: `gem install bundler && bundle install`.  Run `bundle exec rake` to run the tests, or `bundle exec rake run` to run the program.
+## 📋 Prerequisites
+
+- Ruby (recommended version: 2.7+)
+- Bundler
+
+## 🛠 Installation
+
+1. Clone the repository:
+git clone https://github.com/yourusername/email-json-extractor.git
+cd mail-parser
+
+2. Install dependencies:
+bundle install
+
+## 💻 Usage
+
+### Starting the Server
+
+ruby lib/easy.rb # For AWS SES mapping service
+ruby lib/challenge.rb # For email JSON extraction service
+
+### AWS SES Event Mapping
+
+Send a POST request to `/map`
+
+### Email JSON Extraction
+
+Send a POST request to `/parse-email`

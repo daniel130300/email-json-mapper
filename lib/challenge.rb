@@ -1,32 +1,56 @@
+# frozen_string_literal: true
+
 require 'sinatra'
 require 'json'
 require 'mailparser'
 require 'open-uri'
 require 'base64'
 
-# Endpoint to parse email and return only the attached JSON
+# Email JSON Extraction Service
+#
+# This Sinatra application provides an endpoint for extracting JSON content from emails.
+# It can process emails from either a URL or local file path and attempts to find JSON
+# content in multiple locations within the email:
+# 1. Email attachments
+# 2. URLs within the email body
+# 3. Nested JSON URLs in HTML content
+# 4. The email body itself
+#
+# @example Sending a request
+#   POST /parse-email?email_file=https://example.com/email.eml
+#   POST /parse-email?email_file=/path/to/local/email.eml
+#
+# @see https://github.com/mailparser/mailparser-ruby MailParser documentation
+
+# Extracts JSON content from an email file
+#
+# @param [String] params[:email_file] URL or file path to the email
+# @return [String] Extracted JSON content
+# @status 200 Successfully extracted JSON
+# @status 400 Email file not found or no valid JSON content
+# @status 500 Server error during processing
 post '/parse-email' do
   content_type :json
   email_file = params[:email_file]
 
-  # Check if the email is from a URL or local file path
+  # Phase 1: Email Content Retrieval
+  # Determine source and fetch email content accordingly
   if email_file.start_with?('http://', 'https://')
     begin
-      # Open and read the email content from URL
+      # Fetch email content from remote URL with default timeout
       email_content = URI.open(email_file).read
     rescue => e
       status 500
       return { error: "Error fetching email from URL: #{e.message}" }.to_json
     end
   else
-    # Ensure the email file exists if it's a local file
+    # Handle local file access
     unless File.exist?(email_file)
       status 400
       return { error: 'Email file not found' }.to_json
     end
 
     begin
-      # Read the email content from a local file
       email_content = File.read(email_file)
     rescue => e
       status 500
@@ -35,30 +59,38 @@ post '/parse-email' do
   end
 
   begin
+    # Log raw email content for debugging
     puts "email_content #{email_content}"
+    
+    # Parse email with UTF-8 encoding to handle international characters
     email = MailParser::Message.new(email_content, output_charset: 'utf-8')
     
-    # Case 1: Check attachments
+    # Phase 2: JSON Extraction Strategy 1 - Check Attachments
+    # Iterate through email parts looking for JSON attachments
     email_parts = email.part
     email_parts.each do |part|
       begin
         json_content = JSON.parse(part.body)
         return json_content.to_json
       rescue JSON::ParserError
-        next
+        next # Continue to next part if this one isn't valid JSON
       end
     end
     
-    # Case 2: Check for direct URLs in email body
+    # Phase 3: JSON Extraction Strategy 2 - Check URLs in Email Body
+    # Find and check all URLs in the email body
     urls = email.body.scan(/https?:\/\/[^\s<>"]+/)
     urls.each do |url|
       begin
+        # Fetch content from URL with 10-second timeout
         content = URI.open(url, read_timeout: 10).read
-        # Try parsing the content directly as JSON
+        
+        # Try parsing the content as JSON directly
         json_content = JSON.parse(content)
         return json_content.to_json
       rescue JSON::ParserError
-        # Case 3: If not JSON, check if it's HTML containing JSON links
+        # Phase 4: JSON Extraction Strategy 3 - Check for Nested JSON URLs
+        # If content is HTML, look for .json URLs within it
         if content.match?(/html/i)
           nested_urls = content.scan(/https?:\/\/[^\s<>"]+\.json/)
           nested_urls.each do |nested_url|
@@ -67,16 +99,17 @@ post '/parse-email' do
               json_content = JSON.parse(nested_content)
               return json_content.to_json
             rescue
-              next
+              next # Continue to next nested URL if this one fails
             end
           end
         end
       rescue
-        next
+        next # Continue to next URL if this one fails
       end
     end
     
-    # If no JSON found in parts or URLs, try parsing the main body
+    # Phase 5: JSON Extraction Strategy 4 - Check Email Body
+    # Final attempt: try to parse the email body itself as JSON
     begin
       json_content = JSON.parse(email.body)
       return json_content.to_json
@@ -86,7 +119,7 @@ post '/parse-email' do
     end
 
   rescue => e
-    # Handle errors during email parsing
+    # Handle any unexpected errors during the entire process
     status 500
     return { error: "Something went wrong: #{e.message}" }.to_json
   end

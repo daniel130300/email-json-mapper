@@ -1,6 +1,5 @@
 source 'https://rubygems.org'
 gem 'rspec'
-gem 'rubocop'
 gem 'sinatra'
 gem 'json'
 gem 'dry-struct'

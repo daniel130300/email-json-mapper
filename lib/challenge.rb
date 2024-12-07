@@ -58,10 +58,7 @@ post '/parse-email' do
     end
   end
 
-  begin
-    # Log raw email content for debugging
-    puts "email_content #{email_content}"
-    
+  begin    
     # Parse email with UTF-8 encoding to handle international characters
     email = MailParser::Message.new(email_content, output_charset: 'utf-8')
     
@@ -92,7 +89,7 @@ post '/parse-email' do
         # Phase 4: JSON Extraction Strategy 3 - Check for Nested JSON URLs
         # If content is HTML, look for .json URLs within it
         if content.match?(/html/i)
-          nested_urls = content.scan(/https?:\/\/[^\s<>"]+\.json/)
+          nested_urls = content.scan(/https?:\/\/[^\s<>"]+/)
           nested_urls.each do |nested_url|
             begin
               nested_content = URI.open(nested_url, read_timeout: 10).read
@@ -107,17 +104,6 @@ post '/parse-email' do
         next # Continue to next URL if this one fails
       end
     end
-    
-    # Phase 5: JSON Extraction Strategy 4 - Check Email Body
-    # Final attempt: try to parse the email body itself as JSON
-    begin
-      json_content = JSON.parse(email.body)
-      return json_content.to_json
-    rescue JSON::ParserError
-      status 400
-      return { error: 'No valid JSON content found in email or linked resources' }.to_json
-    end
-
   rescue => e
     # Handle any unexpected errors during the entire process
     status 500

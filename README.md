@@ -1,5 +1,5 @@
 
-# Email JSON Extractor
+# Email JSON Mapper
 
 A Ruby service that processes AWS SES (Simple Email Service) notifications by validating, transforming, and analyzing JSON event structures.  
 
